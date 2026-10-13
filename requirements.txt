@@ -3,4 +3,3 @@ requests>=2.31.0
 python-dotenv>=1.0.0
 gunicorn>=21.2.0; sys_platform != 'win32'
 pytest>=7.4.0
-v 

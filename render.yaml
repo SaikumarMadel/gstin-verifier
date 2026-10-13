@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: gstin-verifier
+    env: python
+    region: oregon
+    plan: free
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn run:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 60
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: SESSION_TTL_SECONDS
+        value: 300
+      - key: GST_PORTAL_TIMEOUT_SECONDS
+        value: 12
+      - key: CORS_ORIGINS
+        value: "*"
