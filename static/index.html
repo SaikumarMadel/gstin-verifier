@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GST Verify - Verification Console</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Material Symbols Outlined -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            slate: {
+              950: '#06090e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom sleek scrollbar */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #06090e;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+
+    .scrollbar-none::-webkit-scrollbar {
+      display: none;
+    }
+    .scrollbar-none {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .spinner {
+      width: 15px;
+      height: 15px;
+      border: 2px solid rgba(56, 189, 248, 0.25);
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (min-width: 1024px) {
+      #col-console, #col-dossier {
+        display: block !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-[#06090e] text-slate-100 font-sans antialiased min-h-screen selection:bg-sky-500/30 selection:text-sky-200">
+
+  <!-- ========================================================================= -->
+  <!-- 1. COMPACT FIXED HEADER                                                   -->
+  <!-- ========================================================================= -->
+  <header class="w-full h-13 border-b border-slate-800/80 bg-[#06090e]/95 backdrop-blur sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 h-full flex items-center justify-between">
+      
+      <!-- Logo & Telemetry -->
+      <div class="flex items-center gap-3">
+        <a href="/" class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-sky-950/80 border border-sky-800/60 flex items-center justify-center text-sky-400">
+            <span class="material-symbols-outlined text-[17px]">verified</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="font-bold text-sm tracking-tight text-white">GST Verify</span>
+            <span class="text-[10px] font-mono text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">API</span>
+          </div>
+        </a>
+
+        <!-- Portal Health Status -->
+        <div class="flex items-center gap-2 pl-3 border-l border-slate-800 text-xs font-mono">
+          <div class="flex items-center gap-1.5">
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span class="text-slate-400 hidden sm:inline">Portal:</span>
+            <strong id="portal-health-label" class="text-emerald-400 font-medium">Online</strong>
+          </div>
+          <span class="text-slate-600 hidden sm:inline">&bull;</span>
+          <span id="portal-latency-val" class="text-slate-400 hidden sm:inline">120ms</span>
+        </div>
+      </div>
+
+      <!-- Quick Links -->
+      <div class="flex items-center gap-2">
+        <span class="text-[11px] font-mono text-slate-500 hidden md:inline">Zero-Cost Portal Proxy</span>
+        <a href="https://github.com" target="_blank" class="flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-900/90 border border-slate-800 text-[11px] font-mono text-slate-300 hover:text-white hover:border-slate-700 transition-colors">
+          <span class="material-symbols-outlined text-xs text-sky-400">code</span>
+          <span>MIT</span>
+        </a>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- 2. MAIN APPLICATION WORKSPACE                                             -->
+  <!-- ========================================================================= -->
+  <main class="max-w-6xl mx-auto px-4 py-5 space-y-4">
+
+    <!-- Responsive View Segmented Control (Visible on screen < lg or narrow dock) -->
+    <div class="lg:hidden flex items-center p-1 rounded-xl bg-slate-900/90 border border-slate-800">
+      <button 
+        type="button"
+        id="view-toggle-console" 
+        onclick="switchMobileView('console')" 
+        class="flex-1 py-1.5 text-xs font-mono font-semibold rounded-lg bg-sky-950/80 text-sky-400 border border-sky-800/60 transition-all flex items-center justify-center gap-1.5"
+      >
+        <span class="material-symbols-outlined text-sm">terminal</span>
+        <span>Query Console</span>
+      </button>
+      <button 
+        type="button"
+        id="view-toggle-dossier" 
+        onclick="switchMobileView('dossier')" 
+        class="flex-1 py-1.5 text-xs font-mono font-medium rounded-lg text-slate-400 hover:text-white transition-all flex items-center justify-center gap-1.5"
+      >
+        <span class="material-symbols-outlined text-sm">badge</span>
+        <span>Taxpayer Dossier</span>
+      </button>
+    </div>
+
+    <!-- Error Alert Toast -->
+    <div id="error-alert" style="display: none;" class="p-3 rounded-xl bg-red-950/60 border border-red-500/50 flex items-start gap-3 text-sm text-red-200">
+      <span class="material-symbols-outlined text-red-400 text-lg shrink-0 mt-0.5">error</span>
+      <div class="flex-1 min-w-0">
+        <h4 id="error-title" class="font-bold text-red-300 font-mono text-xs">Error</h4>
+        <p id="error-desc" class="text-xs text-red-200/90 mt-0.5">Failed to verify GSTIN.</p>
+      </div>
+      <button onclick="document.getElementById('error-alert').style.display='none'" class="text-red-400 hover:text-white">
+        <span class="material-symbols-outlined text-base">close</span>
+      </button>
+    </div>
+
+    <!-- Symmetrical Two-Column Split (Side-by-Side on Desktop, Responsive on Mobile/Dock) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+
+      <!-- ===================================================================== -->
+      <!-- LEFT COLUMN: INPUT, MODULO-36 & CAPTCHA (5 cols)                      -->
+      <!-- ===================================================================== -->
+      <div id="col-console" class="lg:col-span-5 space-y-4">
+
+        <div class="p-4 sm:p-5 rounded-2xl bg-[#0b1019] border border-slate-800/90 space-y-4">
+          
+          <!-- Sample Benchmarks Header & Horizontal Pills -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-xs text-slate-400">
+              <span class="font-mono text-[10px] uppercase tracking-wider text-slate-400 font-medium">Quick Benchmarks</span>
+              <span class="text-[10px] text-sky-400 font-mono">1-click test</span>
+            </div>
+            
+            <!-- Sleek Horizontal Chip Bar -->
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+              <button 
+                type="button"
+                class="preset-btn px-2.5 py-1.5 rounded-lg bg-sky-950/50 border border-sky-500 text-xs font-mono text-sky-300 hover:border-sky-400 transition-colors whitespace-nowrap active:scale-95" 
+                data-gstin="27AABCR1718E1ZP" 
+                data-name="reliance"
+              >
+                Reliance
+              </button>
+              <button 
+                type="button"
+                class="preset-btn px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300 hover:text-white hover:border-slate-700 transition-colors whitespace-nowrap active:scale-95" 
+                data-gstin="27AAACT2727Q1ZW" 
+                data-name="tcs"
+              >
+                Tata TCS
+              </button>
+              <button 
+                type="button"
+                class="preset-btn px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300 hover:text-white hover:border-slate-700 transition-colors whitespace-nowrap active:scale-95" 
+                data-gstin="29AABCI1234F1Z8" 
+                data-name="infosys"
+              >
+                Infosys
+              </button>
+              <button 
+                type="button"
+                class="preset-btn px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300 hover:text-white hover:border-slate-700 transition-colors whitespace-nowrap active:scale-95" 
+                data-gstin="07AADCZ8098Q1ZU" 
+                data-name="zomato"
+              >
+                Zomato
+              </button>
+            </div>
+          </div>
+
+          <!-- GSTIN Input Field -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between text-xs">
+              <label for="gstin-input" class="font-mono text-[10px] text-slate-300 uppercase tracking-wider font-medium">
+                Target GSTIN
+              </label>
+              <span id="char-counter" class="font-mono text-[10px] text-emerald-400">15/15 Valid</span>
+            </div>
+
+            <div class="relative flex items-center bg-[#06090e] border border-slate-700 rounded-xl overflow-hidden focus-within:border-sky-400 transition-colors">
+              <span class="pl-3 text-sky-400 font-mono text-xs select-none">ID</span>
+              <input 
+                type="text" 
+                id="gstin-input" 
+                value="27AABCR1718E1ZP" 
+                maxlength="15" 
+                class="w-full bg-transparent px-2.5 py-2.5 text-sm sm:text-base font-mono font-bold tracking-wider text-white focus:outline-none uppercase placeholder-slate-600"
+                placeholder="27AABCR1718E1ZP"
+                autocomplete="off"
+                spellcheck="false"
+              >
+              <button id="clear-gstin-btn" class="p-2 text-slate-500 hover:text-slate-300 transition-colors" title="Clear Field">
+                <span class="material-symbols-outlined text-base">backspace</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Modulo-36 Decomposition Breakdown -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between text-xs font-mono">
+              <span class="text-[10px] text-slate-400 uppercase tracking-wider">Modulo-36 Breakdown</span>
+              <span id="checksum-status-pill" class="text-[10px] text-emerald-400 flex items-center gap-1 font-medium">
+                <span class="material-symbols-outlined text-xs">check_circle</span>
+                <span id="val-checksum-text">Valid Checksum</span>
+              </span>
+            </div>
+
+            <!-- 5-Box Grid with Responsive Spacing -->
+            <div class="grid grid-cols-5 gap-1 font-mono text-center">
+              <div class="p-1.5 sm:p-2 rounded-lg bg-slate-900/90 border border-slate-800">
+                <div class="text-[8px] text-slate-400 uppercase">State</div>
+                <div id="segment-state" class="text-xs sm:text-sm font-bold text-white mt-0.5">27</div>
+                <div id="segment-state-name" class="text-[8px] text-slate-400 truncate">MH</div>
+              </div>
+              <div class="p-1.5 sm:p-2 rounded-lg bg-slate-900/90 border border-slate-800">
+                <div class="text-[8px] text-slate-400 uppercase">PAN</div>
+                <div id="segment-pan" class="text-[10px] sm:text-xs font-bold text-white mt-0.5 truncate" title="AABCR1718E">AABCR1718E</div>
+                <div class="text-[8px] text-slate-400">Entity</div>
+              </div>
+              <div class="p-1.5 sm:p-2 rounded-lg bg-slate-900/90 border border-slate-800">
+                <div class="text-[8px] text-slate-400 uppercase">Unit</div>
+                <div id="segment-entity" class="text-xs sm:text-sm font-bold text-white mt-0.5">1</div>
+                <div class="text-[8px] text-slate-400">Index</div>
+              </div>
+              <div class="p-1.5 sm:p-2 rounded-lg bg-slate-900/90 border border-slate-800">
+                <div class="text-[8px] text-slate-400 uppercase">Const</div>
+                <div id="segment-z" class="text-xs sm:text-sm font-bold text-slate-300 mt-0.5">Z</div>
+                <div class="text-[8px] text-slate-400">Default</div>
+              </div>
+              <div id="checksum-box" class="p-1.5 sm:p-2 rounded-lg bg-emerald-950/40 border border-emerald-500/60">
+                <div class="text-[8px] text-emerald-400 uppercase font-semibold">Check</div>
+                <div id="segment-checksum" class="text-xs sm:text-sm font-bold text-emerald-300 mt-0.5">P</div>
+                <div id="segment-check-status" class="text-[8px] text-emerald-400 font-semibold">PASS</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Official Portal Captcha -->
+          <form id="verification-form" class="space-y-3 pt-3 border-t border-slate-800/80">
+            <div class="flex items-center justify-between text-xs font-mono">
+              <span class="text-slate-300 flex items-center gap-1.5 text-[11px]">
+                <span class="material-symbols-outlined text-sm text-sky-400">security</span>
+                <span>Government Portal Captcha</span>
+              </span>
+              <span id="session-timer" class="text-sky-400 font-medium text-[11px]">Expires in 05:00</span>
+            </div>
+
+            <!-- Resilient Captcha Box & Input -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              
+              <!-- Captcha Image Frame -->
+              <div class="flex-1 h-12 rounded-xl bg-slate-900 border border-slate-800 px-2 flex items-center justify-between overflow-hidden">
+                <div class="flex items-center h-full">
+                  <div id="captcha-loader" class="flex items-center gap-1.5 text-xs font-mono text-sky-400 pl-1">
+                    <div class="spinner"></div>
+                    <span class="text-[11px]">Loading...</span>
+                  </div>
+                  <img id="captcha-img" src="" alt="Portal Captcha" style="display: none;" class="h-8 max-w-[130px] object-contain rounded select-none contrast-125" />
+                </div>
+                <button type="button" id="refresh-captcha-btn" class="p-1 rounded-lg text-slate-400 hover:text-sky-300 hover:bg-slate-800 transition-colors" title="Refresh Captcha">
+                  <span class="material-symbols-outlined text-base">sync</span>
+                </button>
+              </div>
+
+              <!-- Captcha Input -->
+              <div class="w-full sm:w-32">
+                <input 
+                  type="text" 
+                  id="captcha-input" 
+                  maxlength="6"
+                  autocomplete="off"
+                  class="w-full h-12 bg-[#06090e] border border-slate-700 rounded-xl px-2 text-center font-mono font-bold text-sm sm:text-base tracking-widest text-sky-300 focus:outline-none focus:border-sky-400 uppercase transition-colors placeholder-slate-600"
+                  placeholder="CODE"
+                >
+              </div>
+
+            </div>
+
+            <!-- Submit Action Button -->
+            <button 
+              type="submit"
+              id="submit-verify-btn" 
+              class="w-full py-2.5 sm:py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs sm:text-sm tracking-wide transition-all flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer shadow-lg shadow-sky-500/10"
+            >
+              <div class="btn-spinner spinner" style="display: none; border-top-color: #000; border-color: rgba(0,0,0,0.2);"></div>
+              <span class="material-symbols-outlined text-base sm:text-lg font-bold">bolt</span>
+              <span class="btn-text">Verify Taxpayer Identity</span>
+            </button>
+          </form>
+
+        </div>
+
+      </div>
+
+      <!-- ===================================================================== -->
+      <!-- RIGHT COLUMN: TAXPAYER PROFILE DOSSIER & PAYLOAD (7 cols)             -->
+      <!-- ===================================================================== -->
+      <div id="col-dossier" class="lg:col-span-7 space-y-4">
+
+        <div class="rounded-2xl bg-[#0b1019] border border-slate-800/90 overflow-hidden">
+          
+          <!-- Card Header & Navigation Tabs -->
+          <div class="px-4 py-3 border-b border-slate-800/80 flex items-center justify-between bg-slate-900/50">
+            <div class="flex items-center gap-1">
+              <button onclick="switchTab('profile')" id="tab-btn-profile" class="px-2.5 py-1 rounded-lg text-xs font-mono font-semibold text-sky-400 bg-sky-950/60 border border-sky-800/60 transition-colors">
+                Profile
+              </button>
+              <button onclick="switchTab('json')" id="tab-btn-json" class="px-2.5 py-1 rounded-lg text-xs font-mono font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+                JSON
+              </button>
+              <button onclick="switchTab('curl')" id="tab-btn-curl" class="px-2.5 py-1 rounded-lg text-xs font-mono font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+                cURL
+              </button>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <span id="response-status-badge" class="text-[10px] font-mono text-emerald-400 px-2 py-0.5 rounded bg-emerald-950/50 border border-emerald-800/50">Ready</span>
+              <button id="copy-result-btn" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors text-xs flex items-center gap-1 font-mono" title="Copy Data">
+                <span class="material-symbols-outlined text-xs">content_copy</span>
+                <span class="text-[11px]">Copy</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- TAB PANE 1: TAXPAYER PROFILE -->
+          <div id="pane-profile" class="p-4 sm:p-5 space-y-4">
+            
+            <!-- Legal Name & Status Badge -->
+            <div class="flex flex-wrap items-start justify-between gap-3 pb-3 border-b border-slate-800/80">
+              <div class="space-y-0.5 min-w-0 flex-1">
+                <h2 id="res-legal-name" class="text-lg sm:text-xl font-bold text-white tracking-tight break-words">
+                  RELIANCE RETAIL LIMITED
+                </h2>
+                <div class="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
+                  <span>Trade:</span>
+                  <span id="res-trade-name" class="text-slate-200 font-medium">RELIANCE RETAIL</span>
+                </div>
+              </div>
+
+              <!-- Status Badge -->
+              <div id="res-status-badge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/60 shrink-0">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span id="res-status-text" class="text-[11px] font-mono font-bold text-emerald-300">ACTIVE TAXPAYER</span>
+              </div>
+            </div>
+
+            <!-- Structured Metadata Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5 font-mono text-xs">
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80">
+                <div class="text-[9px] text-slate-400 uppercase">GSTIN</div>
+                <div id="res-gstin" class="text-sky-300 font-bold mt-0.5 text-xs truncate">27AABCR1718E1ZP</div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80">
+                <div class="text-[9px] text-slate-400 uppercase">Entity PAN</div>
+                <div id="res-pan" class="text-slate-200 font-bold mt-0.5 text-xs truncate">AABCR1718E</div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80">
+                <div class="text-[9px] text-slate-400 uppercase">Registration Date</div>
+                <div id="res-reg-date" class="text-slate-200 font-medium mt-0.5 text-xs">01/07/2017</div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80">
+                <div class="text-[9px] text-slate-400 uppercase">Taxpayer Type</div>
+                <div id="res-taxpayer-type" class="text-slate-200 font-medium mt-0.5 text-xs">Regular</div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80">
+                <div class="text-[9px] text-slate-400 uppercase">Constitution</div>
+                <div id="res-constitution" class="text-slate-200 font-medium mt-0.5 text-xs truncate">Public Limited Co.</div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80">
+                <div class="text-[9px] text-slate-400 uppercase">Jurisdiction</div>
+                <div id="res-jurisdiction" class="text-slate-200 font-medium mt-0.5 text-xs truncate">Mumbai East</div>
+              </div>
+            </div>
+
+            <!-- Principal Place of Business Block -->
+            <div class="p-3.5 rounded-xl bg-slate-900/70 border border-slate-800/80 space-y-1.5">
+              <div class="flex items-center justify-between text-xs font-mono text-slate-400">
+                <span class="text-[10px] uppercase tracking-wider flex items-center gap-1.5 font-medium">
+                  <span class="material-symbols-outlined text-xs text-sky-400">location_on</span>
+                  <span>Principal Place of Business</span>
+                </span>
+                <a id="res-map-link" href="https://maps.google.com?q=Mumbai+400002" target="_blank" class="text-sky-400 hover:underline flex items-center gap-1 text-[11px]">
+                  <span>Google Maps</span>
+                  <span class="material-symbols-outlined text-xs">open_in_new</span>
+                </a>
+              </div>
+              <p id="res-address" class="text-xs text-slate-200 leading-relaxed">
+                3rd Floor, Court House, Dhobi Talao, Lokmanya Tilak Marg, Kalbadevi, Mumbai, Maharashtra, 400002
+              </p>
+              <div class="flex flex-wrap items-center gap-2 pt-0.5 text-[11px] font-mono text-slate-400">
+                <span>City: <strong id="res-city" class="text-slate-200">Mumbai</strong></span>
+                <span>&bull;</span>
+                <span>State: <strong id="res-state" class="text-slate-200">Maharashtra (27)</strong></span>
+                <span>&bull;</span>
+                <span>PIN: <strong id="res-pincode" class="text-slate-200">400002</strong></span>
+              </div>
+            </div>
+
+            <!-- Registered Business Activities -->
+            <div class="space-y-1.5">
+              <div class="text-[10px] font-mono text-slate-400 uppercase tracking-wider font-medium">Registered Activities</div>
+              <div id="res-activities-tags" class="flex flex-wrap gap-1.5">
+                <span class="px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-xs text-slate-300">Retail Trade</span>
+                <span class="px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-xs text-slate-300">Wholesale Trade</span>
+                <span class="px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-xs text-slate-300">Provision of Services</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- TAB PANE 2: JSON RESPONSE -->
+          <div id="pane-json" class="hidden p-4 bg-[#06090e] font-mono text-xs overflow-x-auto max-h-[460px]">
+            <pre class="text-slate-300 leading-relaxed"><code id="raw-json-output">{
+  "status": "SUCCESS",
+  "statusCode": 200,
+  "taxpayer": {
+    "gstin": "27AABCR1718E1ZP",
+    "legalName": "RELIANCE RETAIL LIMITED",
+    "tradeName": "RELIANCE RETAIL",
+    "status": "Active",
+    "pan": "AABCR1718E",
+    "taxpayerType": "Regular",
+    "registrationDate": "01/07/2017",
+    "constitutionOfBusiness": "Public Limited Company",
+    "address": {
+      "city": "Mumbai",
+      "pincode": "400002",
+      "state": "Maharashtra"
+    }
+  }
+}</code></pre>
+          </div>
+
+          <!-- TAB PANE 3: CURL SNIPPET -->
+          <div id="pane-curl" class="hidden p-4 bg-[#06090e] font-mono text-xs overflow-x-auto max-h-[460px]">
+            <pre class="text-slate-300 leading-relaxed"><code><span class="text-slate-500"># 1. Verify GSTIN directly against microservice</span>
+<span class="text-sky-400">curl</span> -X POST <span class="text-emerald-300">"http://localhost:5001/api/v1/verify"</span> \
+  -H <span class="text-slate-300">"Content-Type: application/json"</span> \
+  -d <span class="text-amber-300">'{
+    "sessionId": "'<span id="curl-session-id-token">current-session-id</span>'",
+    "gstin": "27AABCR1718E1ZP",
+    "captcha": "7XB4K2"
+  }'</span>
+
+<span class="text-slate-500"># 2. Instant offline Modulo-36 validation (0ms network)</span>
+<span class="text-sky-400">curl</span> -X GET <span class="text-emerald-300">"http://localhost:5001/api/v1/gstin/27AABCR1718E1ZP/validate"</span></code></pre>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Clean Minimal Footer -->
+  <footer class="mt-6 border-t border-slate-800/80 py-4 text-center text-[11px] font-mono text-slate-500">
+    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <span>GST Verification Engine &bull; ISO 7064 Modulo 37, 36</span>
+      <span>MIT License</span>
+    </div>
+  </footer>
+
+  <!-- App Javascript -->
+  <script src="/static/app.js"></script>
+</body>
+</html>

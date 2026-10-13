@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  gst-verification:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: zdn-gst-verification
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+      - HOST=0.0.0.0
+      - ENVIRONMENT=production
+      - SESSION_TTL_SECONDS=300
+      - SESSION_CLEANUP_INTERVAL_SECONDS=60
+      - GST_PORTAL_TIMEOUT_SECONDS=15
+      - CORS_ORIGINS=*
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
